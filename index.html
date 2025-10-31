@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro Chill Zone Admin Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Cosmic Background for Saturn Theme */
+        #app {
+            background: linear-gradient(135deg, #1a0833 0%, #30195a 50%, #4a196e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+            color: #E0E7FF;
+            transition: all 0.5s ease-in-out;
+            padding: 1rem;
+        }
+
+        /* Initial Text Styling and Animations */
+        #intro-text {
+            animation: fadeInOut 3s forwards;
+            font-size: 2.5rem;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-100vh); }
+        }
+
+        /* Phase Transitions */
+        .phase-transition {
+            transition: opacity 0.7s ease-in-out, transform 0.7s ease-in-out;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            max-width: 100%;
+        }
+        .phase-active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            position: relative;
+        }
+
+        /* Glowing input focus */
+        input:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(126, 34, 206, 0.5); /* Violet glow */
+            border-color: #A78BFA;
+        }
+
+        /* Custom scrollbar for dark theme */
+        .scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable::-webkit-scrollbar-track {
+            background: #2D0C5E; /* Dark track */
+        }
+
+        .scrollable::-webkit-scrollbar-thumb {
+            background: #6D28D9; /* Violet thumb */
+            border-radius: 4px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb:hover {
+            background: #8B5CF6;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="app" class="relative">
+
+        <!-- User ID & Navigation Panel (Always Visible) -->
+        <div class="fixed top-2 right-2 flex flex-col items-end space-y-2 z-50">
+            <div id="user-id-display" class="bg-indigo-900/50 backdrop-blur-sm text-xs p-2 rounded-lg shadow-xl border border-indigo-700/50 hidden">
+                <span class="font-bold text-indigo-300">User ID:</span> <span id="user-id-value" class="text-indigo-200 truncate max-w-[150px] inline-block"></span>
+            </div>
+
+            <!-- Admin Welcome Message (Shown after successful login) -->
+            <div id="admin-welcome-message" class="bg-green-700/50 backdrop-blur-sm text-xs p-2 rounded-lg shadow-xl border border-green-500/50 hidden">
+                <span class="font-bold text-green-300">Welcome Admin!</span>
+            </div>
+
+            <div class="flex space-x-2">
+                <!-- Admin Login Button -->
+                <button id="admin-login-button" onclick="openAdminLoginModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-full shadow-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                    Admin Login
+                </button>
+
+                <!-- Existing Inbox Button -->
+                <button id="inbox-button" onclick="goToInbox()" class="hidden bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-full shadow-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    Admin Inbox
+                </button>
+            </div>
+        </div>
+
+        <!-- Admin Login Modal -->
+        <div id="admin-login-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-indigo-900 border border-indigo-700 w-full max-w-xs rounded-xl shadow-2xl p-6">
+                <h3 class="text-xl font-bold mb-4 text-purple-300">Admin Access Required</h3>
+                <p class="text-sm text-indigo-400 mb-4">Enter the admin code to unlock rating features.</p>
+                <input type="password" id="admin-code-input" placeholder="Admin Code"
+                       class="w-full p-3 mb-4 bg-indigo-800 border border-indigo-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition duration-150">
+
+                <div class="flex justify-end space-x-2">
+                    <button onclick="closeAdminLoginModal()" class="text-indigo-400 hover:text-indigo-300 py-2 px-3 rounded-lg transition duration-150">Cancel</button>
+                    <button onclick="attemptAdminLogin()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">Login</button>
+                </div>
+                <p id="admin-login-message" class="mt-3 text-red-400 text-sm hidden"></p>
+            </div>
+        </div>
+
+        <!-- Phase 1: Intro Text -->
+        <div id="phase-intro" class="text-center">
+            <h1 id="intro-text" class="text-white font-extrabold tracking-wider">
+                WELCOME TO ASTRO CHILL ZONE 🪐
+            </h1>
+        </div>
+
+        <!-- Phase 2: Contact Form -->
+        <div id="phase-contact" class="phase-transition w-full max-w-sm">
+            <div class="bg-indigo-900/70 backdrop-blur-sm p-6 sm:p-8 rounded-xl shadow-2xl border border-indigo-700/50">
+                <h2 class="text-2xl font-bold mb-6 text-center text-indigo-200">Contact Details</h2>
+
+                <label for="name-input" class="block text-sm font-medium mb-1 text-indigo-300">Name</label>
+                <input type="text" id="name-input" placeholder="Your full name or alias" required
+                    class="w-full p-3 mb-4 bg-indigo-900 border border-indigo-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition duration-150">
+
+                <label for="phone-input" class="block text-sm font-medium mb-1 text-indigo-300">Phone Number (with country code)</label>
+                <input type="tel" id="phone-input" placeholder="+1 555 123 4567" required
+                    class="w-full p-3 mb-6 bg-indigo-900 border border-indigo-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition duration-150">
+
+                <button onclick="startQuestions()"
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition duration-200 transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50">
+                    START ADMIN APPLICATION
+                </button>
+            </div>
+        </div>
+
+        <!-- Phase 3: Questions Form -->
+        <div id="phase-questions" class="phase-transition w-full max-w-2xl">
+            <div class="bg-indigo-900/70 backdrop-blur-sm p-6 sm:p-10 rounded-xl shadow-2xl border border-indigo-700/50">
+                <h2 class="text-3xl font-extrabold mb-8 text-center text-indigo-200">Admin Application Questions</h2>
+
+                <div id="questions-container" class="space-y-6">
+                    <!-- Questions will be dynamically inserted here -->
+                </div>
+
+                <div class="mt-8">
+                    <button onclick="submitApplication()"
+                        class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition duration-200 transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-green-400 focus:ring-opacity-50">
+                        SUBMIT APPLICATION
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4: Inbox View -->
+        <div id="phase-inbox" class="phase-transition w-full max-w-3xl">
+            <div class="bg-indigo-900/70 backdrop-blur-sm p-6 sm:p-10 rounded-xl shadow-2xl border border-indigo-700/50">
+                <h2 class="text-3xl font-extrabold mb-8 text-center text-indigo-200">Admin Inbox</h2>
+
+                <button onclick="goToQuestions()" class="mb-4 text-purple-400 hover:text-purple-300 transition duration-150 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Back to Application Form
+                </button>
+
+                <!-- List of Submissions -->
+                <div id="submissions-list" class="space-y-3 scrollable max-h-[60vh] overflow-y-auto pr-2">
+                    <p class="text-center text-indigo-400">Loading submissions...</p>
+                </div>
+
+                <!-- Detail Modal (for showing submission Q&A) -->
+                <div id="detail-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+                    <div class="bg-indigo-900 border border-indigo-700 w-full max-w-xl max-h-[90vh] rounded-xl shadow-2xl p-6 scrollable overflow-y-auto">
+                        <h3 id="detail-name" class="text-3xl font-bold mb-2 text-purple-300"></h3>
+                        <p id="detail-phone" class="text-indigo-400 mb-6 text-sm"></p>
+
+                        <div id="detail-qa" class="space-y-6 mb-8">
+                            <!-- Q&A details inserted here -->
+                        </div>
+
+                        <!-- Rating Section (Toggled based on Admin Status) -->
+                        <div id="rating-section" class="p-4 bg-indigo-800 rounded-lg border border-indigo-700">
+                            <h4 class="text-xl font-semibold mb-3 text-indigo-200">Rate This Applicant (1-5)</h4>
+                            <div id="rating-container">
+                                <!-- Rating UI or Admin required message goes here -->
+                            </div>
+                        </div>
+
+                        <!-- Display Existing Ratings -->
+                        <div class="mt-6">
+                            <h4 class="text-xl font-semibold mb-3 text-indigo-200">Current Ratings</h4>
+                            <div id="ratings-display" class="space-y-2 text-sm">
+                                <p class="text-indigo-400">Loading ratings...</p>
+                            </div>
+                        </div>
+
+                        <button onclick="closeModal()" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition duration-150">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Message Box -->
+        <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-3 bg-green-600 text-white rounded-lg shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50">
+            Submission successful! Taking you to the Inbox...
+        </div>
+
+    </div>
+
+    <!-- FIREBASE IMPORTS AND LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let currentUserId = null;
+        const ADMIN_CODE = "YOUR_PERSONAL_WEBSITE";
+        let isAdmin = false; // Admin status state
+
+        // Configuration
+        const COLLECTION_NAME = 'admin_submissions';
+        const PUBLIC_PATH = (collection) => `/artifacts/${appId}/public/data/${collection}`;
+
+        // Utility: Exponential Backoff Fetch
+        const MAX_RETRIES = 3;
+        const INITIAL_DELAY_MS = 1000;
+
+        async function fetchWithRetry(url, options, retries = 0) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response;
+            } catch (error) {
+                if (retries < MAX_RETRIES) {
+                    const delay = INITIAL_DELAY_MS * Math.pow(2, retries);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithRetry(url, options, retries + 1);
+                }
+                throw error;
+            }
+        }
+
+        // --- Admin Login Logic ---
+
+        function openAdminLoginModal() {
+            document.getElementById('admin-login-modal').classList.remove('hidden');
+            document.getElementById('admin-code-input').value = '';
+            document.getElementById('admin-login-message').classList.add('hidden');
+        }
+
+        function closeAdminLoginModal() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+        }
+
+        function updateAdminUI(isSuccess = false) {
+            const adminButton = document.getElementById('admin-login-button');
+            const welcomeMessage = document.getElementById('admin-welcome-message');
+
+            if (isAdmin) {
+                adminButton.classList.add('hidden');
+                welcomeMessage.classList.remove('hidden');
+                if (isSuccess) {
+                    showMessage("Welcome Admin! You can now rate applications.", false);
+                }
+            } else {
+                adminButton.classList.remove('hidden');
+                welcomeMessage.classList.add('hidden');
+            }
+        }
+
+        function attemptAdminLogin() {
+            const codeInput = document.getElementById('admin-code-input');
+            const message = document.getElementById('admin-login-message');
+            const enteredCode = codeInput.value.trim();
+
+            if (enteredCode === ADMIN_CODE) {
+                isAdmin = true;
+                closeAdminLoginModal();
+                updateAdminUI(true);
+            } else {
+                message.textContent = "Incorrect code. Try again.";
+                message.classList.remove('hidden');
+            }
+        }
+
+        // --- Firebase Initialization and Auth ---
+
+        async function initializeFirebase() {
+            setLogLevel('Debug');
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config is missing. Cannot initialize Firestore.");
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        document.getElementById('user-id-value').textContent = currentUserId;
+                        document.getElementById('user-id-display').classList.remove('hidden');
+                        document.getElementById('inbox-button').classList.remove('hidden');
+                        console.log("User signed in:", currentUserId);
+                        // Start listening to data once authenticated
+                        if (currentUserId) {
+                            listenToSubmissions();
+                        }
+                    } else {
+                        console.log("User signed out.");
+                        currentUserId = null;
+                        document.getElementById('user-id-display').classList.add('hidden');
+                        document.getElementById('inbox-button').classList.add('hidden');
+                    }
+                });
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+            } catch (error) {
+                console.error("Error initializing or signing in to Firebase:", error);
+            }
+        }
+
+        // --- Data Interaction (CRUD) ---
+
+        // Real-time listener for all submissions
+        let unsubscribeSubmissions = () => {};
+        function listenToSubmissions() {
+            if (!db) return;
+
+            unsubscribeSubmissions(); // Stop previous listener
+            const q = query(collection(db, PUBLIC_PATH(COLLECTION_NAME)));
+
+            unsubscribeSubmissions = onSnapshot(q, (snapshot) => {
+                const submissions = [];
+                snapshot.forEach(doc => {
+                    submissions.push({ id: doc.id, ...doc.data() });
+                });
+                renderSubmissionsList(submissions);
+            }, (error) => {
+                console.error("Error listening to submissions:", error);
+                document.getElementById('submissions-list').innerHTML = '<p class="text-red-400 text-center">Failed to load submissions.</p>';
+            });
+        }
+
+        async function saveApplication(name, phone, answers) {
+            if (!db || !currentUserId) return console.error("Database not ready or user not authenticated.");
+
+            const submissionData = {
+                applicantName: name,
+                applicantPhone: phone,
+                answers: answers,
+                applicantId: currentUserId,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const docRef = await addDoc(collection(db, PUBLIC_PATH(COLLECTION_NAME)), submissionData);
+                console.log("Application submitted with ID: ", docRef.id);
+                showMessage("Submission successful! Taking you to the Inbox...");
+                return true;
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("An error occurred while saving the application.");
+                return false;
+            }
+        }
+
+        async function saveRating(submissionId, score) {
+            if (!db || !currentUserId) return console.error("Database not ready or user not authenticated.");
+
+            const ratingPath = `${PUBLIC_PATH(COLLECTION_NAME)}/${submissionId}/ratings`;
+            const docRef = doc(db, ratingPath, currentUserId); // Use currentUserId as the Document ID for the rating
+
+            const ratingData = {
+                score: score,
+                raterUserId: currentUserId,
+                timestamp: new Date().toIS
